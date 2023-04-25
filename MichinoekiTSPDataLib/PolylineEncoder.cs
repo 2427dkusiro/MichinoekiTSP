@@ -19,7 +19,7 @@ public static class PolylineEncoder
     {
         ArgumentNullException.ThrowIfNull(encodedPoints);
 
-        ReadOnlySpan<char> polylineChars = encodedPoints;
+        var polylineChars = encodedPoints;
         int index = 0;
 
         int currentLat = 0;
