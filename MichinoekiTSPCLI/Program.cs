@@ -18,7 +18,9 @@ class Program
         var sta1 = data.First(x => x.Name == "三笠");
         var sta2 = data.First(x => x.Name == "スタープラザ 芦別");
 
-        FetchRoute(rawSaveDir, sta1, sta2);
+        // FetchRoute(rawSaveDir, sta1, sta2);
+        var routes = Load(rawSaveDir, data).ToArray();
+        var str = $"""[{string.Join(',', routes.First().PolylineDecoded.Select(x => $"[{x.Latitude},{x.Longitude}]"))}]""";
     }
 
     private static IEnumerable<Route> Load(string saveDir, MichinoekiGeometry[] michinoekiGeometries)
