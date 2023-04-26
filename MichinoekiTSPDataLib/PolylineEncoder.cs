@@ -64,11 +64,7 @@ public static class PolylineEncoder
 
             currentLng += (sum & 1) == 1 ? ~(sum >> 1) : (sum >> 1);
 
-            yield return new GeometryPoint
-            {
-                Latitude = Convert.ToDouble(currentLat) / 1E5,
-                Longitude = Convert.ToDouble(currentLng) / 1E5
-            };
+            yield return new GeometryPoint(null, Convert.ToDouble(currentLat) / 1E5, Convert.ToDouble(currentLng) / 1E5);
         }
     }
 

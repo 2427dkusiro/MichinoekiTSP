@@ -2,6 +2,7 @@
 
 using Microsoft.Web.WebView2.Wpf;
 
+using System.Diagnostics;
 using System.Reflection;
 using System.Windows;
 
@@ -84,8 +85,14 @@ public partial class MainWindow : Window
 
         await Task.Delay(100);
 
-        // デモとして三笠からの経路を全表示
-        foreach (Route route in manager.Routes.Where(x => x.From.Name == "三笠"))
+        var start = manager.Michinoekis.First(x => x.Name == "三笠");
+        var solver = new TSPSolver(manager, start);
+        var answer = solver.TwoOptILS();
+
+        Debug.WriteLine($"時間:{answer.TotalTime}");
+        Debug.WriteLine($"距離:{answer.TotalDistance / 1000m}km");
+
+        foreach (Route route in answer.Routes)
         {
             await AddPolyline(route.PolylineDecoded, "#0000bb");
         }
