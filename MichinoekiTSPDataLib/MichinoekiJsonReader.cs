@@ -3,9 +3,17 @@ using System.Text.Json;
 
 namespace MichinoekiTSP.Data;
 
+/// <summary>
+/// オープンデータの道の駅情報を読み取る機能を提供します。
+/// </summary>
 public static class MichinoekiJsonReader
 {
-    public static IEnumerable<MichinoekiGeometry> Read()
+    /// <summary>
+    /// 差分データを含む、道の駅情報を読み取ります。
+    /// </summary>
+    /// <returns></returns>
+    /// <exception cref="NotSupportedException"></exception>
+    public static IEnumerable<GeometryPoint> Read()
     {
         var path = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
         if (string.IsNullOrEmpty(path))
@@ -22,7 +30,14 @@ public static class MichinoekiJsonReader
         return dataMain.Concat(dataDiff).Where(station => !listAbolish.Contains(station.Name));
     }
 
-    public static IEnumerable<MichinoekiGeometry> ReadFile(Stream stream)
+    /// <summary>
+    /// オープンデータの道の駅情報の書式に従ったjsonファイルを解析します。
+    /// </summary>
+    /// <param name="stream"></param>
+    /// <returns></returns>
+    /// <exception cref="NotSupportedException"></exception>
+    /// <exception cref="FormatException"></exception>
+    public static IEnumerable<GeometryPoint> ReadFile(Stream stream)
     {
         var json = JsonDocument.Parse(stream);
         var data = json.RootElement.GetProperty("features").EnumerateArray().Select(obj =>
@@ -37,12 +52,17 @@ public static class MichinoekiJsonReader
             var lng = geo[0].GetDouble();
             var name = prop.GetProperty("道の駅名").GetString() ?? throw new FormatException("property '道の駅名' must be not null;");
 
-            return new MichinoekiGeometry(name, lat, lng);
+            return new GeometryPoint(name, lat, lng);
         });
 
         return data;
     }
 
+    /// <summary>
+    /// 独自の廃止駅リストを読み取ります。
+    /// </summary>
+    /// <param name="stream"></param>
+    /// <returns></returns>
     public static IEnumerable<string> ReadList(Stream stream)
     {
         StreamReader reader = new StreamReader(stream);

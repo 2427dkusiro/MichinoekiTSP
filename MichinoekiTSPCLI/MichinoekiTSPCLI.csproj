@@ -11,10 +11,4 @@
     <ProjectReference Include="..\MichinoekiTSPDataLib\MichinoekiTSPDataLib.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <None Update="google_credential.json">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-  </ItemGroup>
-
 </Project>

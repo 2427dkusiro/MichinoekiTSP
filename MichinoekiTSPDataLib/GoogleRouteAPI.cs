@@ -4,15 +4,35 @@ using Google.Api.Gax.Grpc;
 using Google.Maps.Routing.V2;
 using Google.Type;
 
-using DateTime = System.DateTime;
-using System.Text.Encodings.Web;
-using System.Text.Json;
+using System.Reflection;
 
-public class GoogleRouteAPI
+/// <summary>
+/// Google Maps の Route API を利用する機能を提供します。
+/// </summary>
+public class GoogleRouteAPIClient
 {
-    public static Route GetRoute(MichinoekiGeometry from, MichinoekiGeometry to)
+    private readonly RoutesClient _client;
+
+    /// <summary>
+    /// <see cref="GoogleRouteAPIClient"/> クラスの新しいインスタンスを初期化します。
+    /// </summary>
+    public GoogleRouteAPIClient()
     {
-        RoutesClient client = RoutesClient.Create();
+        var execPath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+        var credential = Path.Combine(execPath!, "google_credential.json");
+        Environment.SetEnvironmentVariable("GOOGLE_APPLICATION_CREDENTIALS", credential);
+        _client = RoutesClient.Create();
+    }
+
+    /// <summary>
+    /// 道の駅間のルートを、デフォルトの設定で取得します。
+    /// </summary>
+    /// <param name="from">出発点。</param>
+    /// <param name="to">到着点</param>
+    /// <returns></returns>
+    /// <exception cref="InvalidOperationException"></exception>
+    public async Task<Route> GetRoute(GeometryPoint from, GeometryPoint to)
+    {
         CallSettings callSettings = CallSettings.FromHeader("X-Goog-FieldMask", "*");
         ComputeRoutesRequest request = new ComputeRoutesRequest
         {
@@ -34,7 +54,7 @@ public class GoogleRouteAPI
             }
         };
 
-        ComputeRoutesResponse response = client.ComputeRoutes(request, callSettings) ?? throw new InvalidOperationException("API response was null.");
+        ComputeRoutesResponse response = await _client.ComputeRoutesAsync(request, callSettings) ?? throw new InvalidOperationException("API response was null.");
         if (!response.Routes.Any())
         {
             throw new InvalidOperationException("API returned an invalid response.");
@@ -52,29 +72,3 @@ public class GoogleRouteAPI
         return obj;
     }
 }
-
-public record Route(MichinoekiGeometry From, MichinoekiGeometry To, string Title, int DistanceMeters, TimeSpan Duration, double AverageSpeed, string Polyline, GeometryPoint[] PolylineDecoded)
-{
-    public string ToJson()
-    {
-        var jsonObj = new JsonRoute(DateTime.Now, From.Name, To.Name, Title, DistanceMeters, Duration, Polyline);
-        JsonSerializerOptions options = new()
-        {
-            Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
-        };
-        return JsonSerializer.Serialize(jsonObj, options);
-    }
-
-    public static Route FromJson(string json, MichinoekiGeometry[] michinoekis)
-    {
-        var jsonObj = JsonSerializer.Deserialize<JsonRoute>(json) ?? throw new FormatException();
-        var average = jsonObj.DistanceMeters / jsonObj.Duration.TotalHours * 1000;
-        var decodedPolyline = PolylineEncoder.Decode(jsonObj.Polyline).ToArray();
-
-        var from = michinoekis.FirstOrDefault(x => x.Name == jsonObj.From) ?? throw new InvalidOperationException($"name '{jsonObj.From}' was not found.");
-        var to = michinoekis.FirstOrDefault(x => x.Name == jsonObj.To) ?? throw new InvalidOperationException($"name '{jsonObj.From}' was not found.");
-        return new Route(from, to, jsonObj.Title, jsonObj.DistanceMeters, jsonObj.Duration, average, jsonObj.Polyline, decodedPolyline);
-    }
-}
-
-public record JsonRoute(DateTime CreateTimeStamp, string From, string To, string Title, int DistanceMeters, TimeSpan Duration, string Polyline);
