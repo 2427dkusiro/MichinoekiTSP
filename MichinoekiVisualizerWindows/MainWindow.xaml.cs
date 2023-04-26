@@ -34,6 +34,7 @@ public partial class MainWindow : Window
         webView.ContentLoading += async (sender, e) =>
         {
             await InitializeMap();
+            await RenderAnswer();
         };
     }
 
@@ -65,8 +66,17 @@ public partial class MainWindow : Window
         await SetView(43.06878725573487, 141.35072226585388);
         await Task.Delay(100);
         await SetZoom(10);
+    }
 
-        var manager = MichinoekiResourceManager.CreateInstance();
+    // ひとまずデバッグ用
+    private async Task RenderAnswer()
+    {
+        MichinoekiResourceManager? manager = null;
+        await Task.Run(() =>
+        {
+            manager = MichinoekiResourceManager.CreateInstance();
+        });
+
         foreach (GeometryPoint point in manager.Michinoekis)
         {
             await AddMarker(point.Latitude, point.Longitude, point.Name);

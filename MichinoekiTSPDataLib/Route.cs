@@ -5,8 +5,10 @@ using System.Text.Json;
 using DateTime = System.DateTime;
 
 namespace MichinoekiTSP.Data;
-public record Route(GeometryPoint From, GeometryPoint To, string Title, int DistanceMeters, TimeSpan Duration, double AverageSpeed, string Polyline, GeometryPoint[] PolylineDecoded)
+public record Route(GeometryPoint From, GeometryPoint To, string Title, int DistanceMeters, TimeSpan Duration, double AverageSpeed, string Polyline)
 {
+    public GeometryPoint[] PolylineDecoded { get => PolylineEncoder.Decode(Polyline).ToArray(); }
+
     public string ToJson()
     {
         var jsonObj = new JsonRoute(DateTime.Now, From.Name, To.Name, Title, DistanceMeters, Duration, Polyline);
@@ -17,11 +19,9 @@ public record Route(GeometryPoint From, GeometryPoint To, string Title, int Dist
         return JsonSerializer.Serialize(jsonObj, options);
     }
 
-    public static Route FromJson(string json, ReadOnlySpan<GeometryPoint> michinoekis)
+    public static Route FromJsonObject(JsonRoute jsonObj, ReadOnlySpan<GeometryPoint> michinoekis)
     {
-        JsonRoute jsonObj = JsonSerializer.Deserialize<JsonRoute>(json) ?? throw new FormatException();
         var average = jsonObj.DistanceMeters / jsonObj.Duration.TotalHours * 1000;
-        GeometryPoint[] decodedPolyline = PolylineEncoder.Decode(jsonObj.Polyline).ToArray();
 
         GeometryPoint? from = null;
         GeometryPoint? to = null;
@@ -40,6 +40,18 @@ public record Route(GeometryPoint From, GeometryPoint To, string Title, int Dist
         return new Route(
             from ?? throw new FormatException($"point in json '{jsonObj.From}' was not found"),
             to ?? throw new FormatException($"point in json '{jsonObj.From}' was not found"),
-            jsonObj.Title, jsonObj.DistanceMeters, jsonObj.Duration, average, jsonObj.Polyline, decodedPolyline);
+            jsonObj.Title, jsonObj.DistanceMeters, jsonObj.Duration, average, jsonObj.Polyline);
+    }
+
+    public static Route FromJson(string json, ReadOnlySpan<GeometryPoint> michinoekis)
+    {
+        JsonRoute jsonObj = JsonSerializer.Deserialize<JsonRoute>(json) ?? throw new FormatException();
+        return FromJsonObject(jsonObj, michinoekis);
+    }
+
+    public static Route FromJson(Stream stream, ReadOnlySpan<GeometryPoint> michinoekis)
+    {
+        JsonRoute jsonObj = JsonSerializer.Deserialize<JsonRoute>(stream) ?? throw new FormatException();
+        return FromJsonObject(jsonObj, michinoekis);
     }
 }

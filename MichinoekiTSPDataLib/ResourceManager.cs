@@ -22,14 +22,19 @@ public class MichinoekiResourceManager
         rawSaveDir = $@"{execDir}MichinoekiTSP\MichinoekiTSPDataLib\Routes\Default_Raw\";
 
         michinoekis = MichinoekiJsonReader.Read().ToArray();
-        routes = LoadRawRoutes(rawSaveDir, michinoekis).ToArray();
+        routes = LoadRawRouteArray(rawSaveDir, michinoekis);
     }
+
+    private static MichinoekiResourceManager _instance;
 
     public static MichinoekiResourceManager CreateInstance()
     {
-        var instance = new MichinoekiResourceManager();
-        instance.Initialize();
-        return instance;
+        if (_instance is null)
+        {
+            _instance = new MichinoekiResourceManager();
+            _instance.Initialize();
+        }
+        return _instance;
     }
 
     private static IEnumerable<Route> LoadRawRoutes(string saveDir, GeometryPoint[] michinoekiGeometries)
@@ -37,11 +42,23 @@ public class MichinoekiResourceManager
         var files = Directory.GetFiles(saveDir, "*.json");
         foreach (var file in files)
         {
-            using StreamReader reader = new(file);
-            var str = reader.ReadToEnd();
-            var obj = Route.FromJson(str, michinoekiGeometries);
+            using FileStream stream = new(file, FileMode.Open);
+            var obj = Route.FromJson(stream, michinoekiGeometries);
             yield return obj;
         }
+    }
+
+    private static Route[] LoadRawRouteArray(string saveDir, GeometryPoint[] michinoekiGeometries)
+    {
+        var files = Directory.GetFiles(saveDir, "*.json");
+        var result = new Route[files.Length];
+        Parallel.For(0, files.Length, i =>
+        {
+            using FileStream stream = new(files[i], FileMode.Open);
+            var obj = Route.FromJson(stream, michinoekiGeometries);
+            result[i] = obj;
+        });
+        return result;
     }
 
     public async Task FetchNotExistRoutes(Action<string> writeMsg, Func<string> getInput)

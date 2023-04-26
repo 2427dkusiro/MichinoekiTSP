@@ -95,9 +95,8 @@ public class GoogleRouteAPIClient
         var duration = TimeSpan.FromSeconds(route.Duration.Seconds + (route.Duration.Nanos / 1_000_000_000));
         var averageSpeed = distance / duration.TotalHours * 1000;
         var polyline = route.Polyline.EncodedPolyline;
-        GeometryPoint[] decodedPolyline = PolylineEncoder.Decode(polyline).ToArray();
 
-        var obj = new Route(from, to, title, distance, duration, averageSpeed, polyline, decodedPolyline);
+        var obj = new Route(from, to, title, distance, duration, averageSpeed, polyline);
         return obj;
     }
 }
