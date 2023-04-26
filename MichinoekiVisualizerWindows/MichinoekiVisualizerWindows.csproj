@@ -12,4 +12,14 @@
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.1777-prerelease" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\MichinoekiTSPDataLib\MichinoekiTSPDataLib.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="Index.html">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>

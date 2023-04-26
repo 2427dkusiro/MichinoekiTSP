@@ -5,11 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:MichinoekiVisualizerWindows"
         mc:Ignorable="d"
-        xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
-        Title="MainWindow" Height="450" Width="800">
-    <Grid>
-        <wv2:WebView2 Name="webView"
-                  Source="https://www.microsoft.com"
-        />
+        Title="MainWindow" Height="720" Width="1280" Loaded="Window_Loaded">
+    <Grid x:Name="MainGrid">
     </Grid>
 </Window>
