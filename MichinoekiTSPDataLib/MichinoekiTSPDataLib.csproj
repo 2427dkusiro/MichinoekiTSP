@@ -12,7 +12,7 @@
 
   <ItemGroup>
     <None Update="google_credential.json">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Update="Resources\Michinoeki_Abolish_List.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>

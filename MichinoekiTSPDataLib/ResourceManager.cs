@@ -1,6 +1,4 @@
-﻿using Google.Protobuf;
-
-using System.Reflection;
+﻿using System.Reflection;
 
 namespace MichinoekiTSP.Data;
 
@@ -9,11 +7,11 @@ public class MichinoekiResourceManager
     protected MichinoekiResourceManager() { }
 
     private GeometryPoint[] michinoekis;
-    public IReadOnlyList<GeometryPoint> Michinoekis { get => michinoekis; }
+    public IReadOnlyList<GeometryPoint> Michinoekis => michinoekis;
 
     private Route[] routes;
 
-    public IReadOnlyList<Route> Routes { get => routes; }
+    public IReadOnlyList<Route> Routes => routes;
 
     private string rawSaveDir;
 
@@ -49,20 +47,20 @@ public class MichinoekiResourceManager
     public async Task FetchNotExistRoutes(Action<string> writeMsg, Func<string> getInput)
     {
         GeometryPoint[] michinoekiGeometries = michinoekis;
-        string saveDir = rawSaveDir;
+        var saveDir = rawSaveDir;
 
         List<(GeometryPoint, GeometryPoint)> list = new();
-        int existHitCount = 0;
-        for (int i = 0; i < michinoekiGeometries.Length; i++)
+        var existHitCount = 0;
+        for (var i = 0; i < michinoekiGeometries.Length; i++)
         {
-            for (int j = 0; j < michinoekiGeometries.Length; j++)
+            for (var j = 0; j < michinoekiGeometries.Length; j++)
             {
                 if (i == j)
                 {
                     continue;
                 }
-                var from = michinoekiGeometries[i];
-                var to = michinoekiGeometries[j];
+                GeometryPoint from = michinoekiGeometries[i];
+                GeometryPoint to = michinoekiGeometries[j];
                 if (routes.Any(r => r.From == from && r.To == to))
                 {
                     existHitCount++;
@@ -73,10 +71,7 @@ public class MichinoekiResourceManager
             }
         }
 
-        //debug
-        list = list.Take(100).ToList();
-
-        int updateCount = list.Count;
+        var updateCount = list.Count;
         const decimal requestFee = 0.67m;
         var estimateCost = requestFee * updateCount;
         var msg = $"""
@@ -96,17 +91,16 @@ public class MichinoekiResourceManager
         var client = new GoogleRouteAPIClient();
         for (var i = 0; i < list.Count; i++)
         {
-            var (from, to) = list[i];
+            (GeometryPoint from, GeometryPoint to) = list[i];
             writeMsg($"[{i + 1}/{list.Count}] begin fetch route '{from.Name}' to '{to.Name}' ...");
             await FetchRoute(client, saveDir, from, to, writeMsg);
             writeMsg($"[{i + 1}/{list.Count}] fetch completed!");
-            await Task.Delay(1000);
         }
     }
 
     private static async Task FetchRoute(GoogleRouteAPIClient client, string saveDir, GeometryPoint from, GeometryPoint to, Action<string>? writeLog = null)
     {
-        var route = await client.GetRoute(from, to);
+        Route route = await client.GetRoute(from, to);
 
         var path = Path.Combine(saveDir, $"'{Escape(route.From.Name)}'から'{Escape(route.To.Name)}'まで.json");
         using StreamWriter stream = new(path);

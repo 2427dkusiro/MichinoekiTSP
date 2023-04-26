@@ -20,10 +20,10 @@ public static class PolylineEncoder
         ArgumentNullException.ThrowIfNull(encodedPoints);
 
         var polylineChars = encodedPoints;
-        int index = 0;
+        var index = 0;
 
-        int currentLat = 0;
-        int currentLng = 0;
+        var currentLat = 0;
+        var currentLng = 0;
         int next5bits;
         int sum;
         int shifter;
@@ -83,31 +83,31 @@ public static class PolylineEncoder
 
         void encodeDiff(int diff)
         {
-            int shifted = diff << 1;
+            var shifted = diff << 1;
             if (diff < 0)
             {
                 shifted = ~shifted;
             }
 
-            int rem = shifted;
+            var rem = shifted;
 
             while (rem >= 0x20)
             {
-                str.Append((char)((0x20 | (rem & 0x1f)) + 63));
+                _ = str.Append((char)((0x20 | (rem & 0x1f)) + 63));
 
                 rem >>= 5;
             }
 
-            str.Append((char)(rem + 63));
+            _ = str.Append((char)(rem + 63));
         }
 
-        int lastLat = 0;
-        int lastLng = 0;
+        var lastLat = 0;
+        var lastLng = 0;
 
-        foreach (var point in points)
+        foreach (GeometryPoint point in points)
         {
-            int lat = (int)Math.Round(point.Latitude * 1E5);
-            int lng = (int)Math.Round(point.Longitude * 1E5);
+            var lat = (int)Math.Round(point.Latitude * 1E5);
+            var lng = (int)Math.Round(point.Longitude * 1E5);
 
             encodeDiff(lat - lastLat);
             encodeDiff(lng - lastLng);

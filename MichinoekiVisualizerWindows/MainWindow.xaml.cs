@@ -1,19 +1,11 @@
-﻿using Microsoft.Web.WebView2.Wpf;
+﻿using MichinoekiTSP.Data;
 
-using Path = System.IO.Path;
+using Microsoft.Web.WebView2.Wpf;
 
 using System.Reflection;
-using System.Text;
 using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
-using MichinoekiTSP.Data;
+
+using Path = System.IO.Path;
 
 namespace MichinoekiVisualizerWindows;
 /// <summary>
@@ -37,7 +29,7 @@ public partial class MainWindow : Window
         {
             Source = new Uri($"file:///{html}")
         };
-        MainGrid.Children.Add(webView);
+        _ = MainGrid.Children.Add(webView);
 
         webView.ContentLoading += async (sender, e) =>
         {
@@ -47,17 +39,17 @@ public partial class MainWindow : Window
 
     private async Task SetView(double lat, double lng)
     {
-        var result = await webView.CoreWebView2.ExecuteScriptAsync($"""setView({lat},{lng})""");
+        _ = await webView.CoreWebView2.ExecuteScriptAsync($"""setView({lat},{lng})""");
     }
 
     private async Task SetZoom(int level)
     {
-        var result = await webView.CoreWebView2.ExecuteScriptAsync($"""setZoom({level})""");
+        _ = await webView.CoreWebView2.ExecuteScriptAsync($"""setZoom({level})""");
     }
 
     private async Task AddMarker(double lat, double lng, string name)
     {
-        var result = await webView.CoreWebView2.ExecuteScriptAsync($"""addMarker({lat},{lng},"{name}")""");
+        _ = await webView.CoreWebView2.ExecuteScriptAsync($"""addMarker({lat},{lng},"{name}")""");
     }
 
     private async Task AddPolyline(IEnumerable<GeometryPoint> points, string color)
@@ -75,14 +67,15 @@ public partial class MainWindow : Window
         await SetZoom(10);
 
         var manager = MichinoekiResourceManager.CreateInstance();
-        foreach (var point in manager.Michinoekis)
+        foreach (GeometryPoint point in manager.Michinoekis)
         {
             await AddMarker(point.Latitude, point.Longitude, point.Name);
         }
 
         await Task.Delay(100);
 
-        foreach (var route in manager.Routes)
+        // デモとして三笠からの経路を全表示
+        foreach (Route route in manager.Routes.Where(x => x.From.Name == "三笠"))
         {
             await AddPolyline(route.PolylineDecoded, "#0000bb");
         }

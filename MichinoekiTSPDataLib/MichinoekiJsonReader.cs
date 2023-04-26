@@ -20,11 +20,11 @@ public static class MichinoekiJsonReader
         {
             throw new NotSupportedException();
         }
-        using var streamMain = File.OpenRead(Path.Combine(path, "./Resources/p35_18_01.geojson"));
-        using var streamDiff = File.OpenRead(Path.Combine(path, "./Resources/Michinoeki_diff.json"));
-        using var streamAbolish = File.OpenRead(Path.Combine(path, "./Resources/Michinoeki_Abolish_List.txt"));
-        var dataMain = ReadFile(streamMain);
-        var dataDiff = ReadFile(streamDiff);
+        using FileStream streamMain = File.OpenRead(Path.Combine(path, "./Resources/p35_18_01.geojson"));
+        using FileStream streamDiff = File.OpenRead(Path.Combine(path, "./Resources/Michinoeki_diff.json"));
+        using FileStream streamAbolish = File.OpenRead(Path.Combine(path, "./Resources/Michinoeki_Abolish_List.txt"));
+        IEnumerable<GeometryPoint> dataMain = ReadFile(streamMain);
+        IEnumerable<GeometryPoint> dataDiff = ReadFile(streamDiff);
         var listAbolish = ReadList(streamAbolish).ToList();
 
         return dataMain.Concat(dataDiff).Where(station => !listAbolish.Contains(station.Name));
@@ -40,10 +40,10 @@ public static class MichinoekiJsonReader
     public static IEnumerable<GeometryPoint> ReadFile(Stream stream)
     {
         var json = JsonDocument.Parse(stream);
-        var data = json.RootElement.GetProperty("features").EnumerateArray().Select(obj =>
+        IEnumerable<GeometryPoint> data = json.RootElement.GetProperty("features").EnumerateArray().Select(obj =>
         {
-            var prop = obj.GetProperty("properties");
-            var geo = obj.GetProperty("geometry").GetProperty("coordinates").EnumerateArray().ToArray();
+            JsonElement prop = obj.GetProperty("properties");
+            JsonElement[] geo = obj.GetProperty("geometry").GetProperty("coordinates").EnumerateArray().ToArray();
             if (geo.Length != 2)
             {
                 throw new NotSupportedException("geometry 'point' must has two element.");
@@ -65,7 +65,7 @@ public static class MichinoekiJsonReader
     /// <returns></returns>
     public static IEnumerable<string> ReadList(Stream stream)
     {
-        StreamReader reader = new StreamReader(stream);
+        var reader = new StreamReader(stream);
         while (true)
         {
             var line = reader.ReadLine()?.Trim();

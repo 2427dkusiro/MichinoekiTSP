@@ -1,11 +1,11 @@
-﻿namespace MichinoekiTSP.Data;
-
+﻿using Google.Api.Gax;
 using Google.Api.Gax.Grpc;
 using Google.Maps.Routing.V2;
 using Google.Type;
 
 using System.Reflection;
 
+namespace MichinoekiTSP.Data;
 /// <summary>
 /// Google Maps の Route API を利用する機能を提供します。
 /// </summary>
@@ -33,8 +33,8 @@ public class GoogleRouteAPIClient
     public async Task<Route> GetRoute(GeometryPoint from, GeometryPoint to, Action<string>? writeLog = null)
     {
         RoutesClient _client = await RoutesClient.CreateAsync();
-        CallSettings callSettings = CallSettings.FromHeader("X-Goog-FieldMask", "*");
-        ComputeRoutesRequest request = new ComputeRoutesRequest
+        var callSettings = CallSettings.FromHeader("X-Goog-FieldMask", "*");
+        var request = new ComputeRoutesRequest
         {
             Origin = new Waypoint
             {
@@ -55,7 +55,7 @@ public class GoogleRouteAPIClient
         };
 
         ComputeRoutesResponse? response = null;
-        int retry;
+        int retry = 0;
 
         async Task TryGet()
         {
@@ -72,6 +72,7 @@ public class GoogleRouteAPIClient
                 writeLog?.Invoke($"API Error Response:{ex}");
                 if (retry++ < maxRetry)
                 {
+                    await Task.Delay(1000);
                     _client = await RoutesClient.CreateAsync();
                     await TryGet();
                 }
@@ -81,19 +82,20 @@ public class GoogleRouteAPIClient
                 }
             }
         }
+        await TryGet();
 
         if (response is null)
         {
             throw new InvalidOperationException();
         }
 
-        var route = response.Routes.First();
+        Google.Maps.Routing.V2.Route route = response.Routes.First();
         var title = route.Description;
-        int distance = route.DistanceMeters;
-        var duration = TimeSpan.FromSeconds(route.Duration.Seconds + route.Duration.Nanos / 1_000_000_000);
+        var distance = route.DistanceMeters;
+        var duration = TimeSpan.FromSeconds(route.Duration.Seconds + (route.Duration.Nanos / 1_000_000_000));
         var averageSpeed = distance / duration.TotalHours * 1000;
         var polyline = route.Polyline.EncodedPolyline;
-        var decodedPolyline = PolylineEncoder.Decode(polyline).ToArray();
+        GeometryPoint[] decodedPolyline = PolylineEncoder.Decode(polyline).ToArray();
 
         var obj = new Route(from, to, title, distance, duration, averageSpeed, polyline, decodedPolyline);
         return obj;
