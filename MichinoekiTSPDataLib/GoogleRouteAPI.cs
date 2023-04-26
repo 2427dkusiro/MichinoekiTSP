@@ -11,7 +11,7 @@ using System.Reflection;
 /// </summary>
 public class GoogleRouteAPIClient
 {
-    private readonly RoutesClient _client;
+    private static readonly int maxRetry = 3;
 
     /// <summary>
     /// <see cref="GoogleRouteAPIClient"/> クラスの新しいインスタンスを初期化します。
@@ -21,7 +21,6 @@ public class GoogleRouteAPIClient
         var execPath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
         var credential = Path.Combine(execPath!, "google_credential.json");
         Environment.SetEnvironmentVariable("GOOGLE_APPLICATION_CREDENTIALS", credential);
-        _client = RoutesClient.Create();
     }
 
     /// <summary>
@@ -31,8 +30,9 @@ public class GoogleRouteAPIClient
     /// <param name="to">到着点</param>
     /// <returns></returns>
     /// <exception cref="InvalidOperationException"></exception>
-    public async Task<Route> GetRoute(GeometryPoint from, GeometryPoint to)
+    public async Task<Route> GetRoute(GeometryPoint from, GeometryPoint to, Action<string>? writeLog = null)
     {
+        RoutesClient _client = await RoutesClient.CreateAsync();
         CallSettings callSettings = CallSettings.FromHeader("X-Goog-FieldMask", "*");
         ComputeRoutesRequest request = new ComputeRoutesRequest
         {
@@ -54,10 +54,37 @@ public class GoogleRouteAPIClient
             }
         };
 
-        ComputeRoutesResponse response = await _client.ComputeRoutesAsync(request, callSettings) ?? throw new InvalidOperationException("API response was null.");
-        if (!response.Routes.Any())
+        ComputeRoutesResponse? response = null;
+        int retry;
+
+        async Task TryGet()
         {
-            throw new InvalidOperationException("API returned an invalid response.");
+            try
+            {
+                response = await _client.ComputeRoutesAsync(request, callSettings) ?? throw new InvalidOperationException("API response was null.");
+                if (!response.Routes.Any())
+                {
+                    throw new InvalidOperationException("API returned an invalid response.");
+                }
+            }
+            catch (Exception ex)
+            {
+                writeLog?.Invoke($"API Error Response:{ex}");
+                if (retry++ < maxRetry)
+                {
+                    _client = await RoutesClient.CreateAsync();
+                    await TryGet();
+                }
+                else
+                {
+                    throw;
+                }
+            }
+        }
+
+        if (response is null)
+        {
+            throw new InvalidOperationException();
         }
 
         var route = response.Routes.First();

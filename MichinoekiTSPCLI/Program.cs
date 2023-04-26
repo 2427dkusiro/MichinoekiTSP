@@ -4,12 +4,9 @@ using MichinoekiTSP.Data;
 
 class Program
 {
-    static void Main()
+    static async Task Main()
     {
         MichinoekiResourceManager manager = MichinoekiResourceManager.CreateInstance();
-
-        
-
-        // FetchRoute(rawSaveDir, sta1, sta2);
+        await manager.FetchNotExistRoutes(msg => Console.WriteLine(msg), () => Console.ReadLine()!);
     }
 }
