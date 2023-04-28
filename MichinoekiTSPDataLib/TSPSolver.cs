@@ -157,13 +157,21 @@ public class TSPSolver
             Span<int> target = stackalloc int[4];
             for (int i = 0; i < 4; i++)
             {
+                bool used = false;
                 var rand = random.Next(routes.Length - i);
-                var _offset = offset[rand];
-                for (int j = rand; j < offset.Length; j++)
+                for (int j = 0; j < i; j++)
                 {
-                    offset[j]++;
+                    if (target[j] == rand)
+                    {
+                        used = true;
+                    }
                 }
-                target[i] = rand + _offset;
+                if (used)
+                {
+                    i--;
+                    continue;
+                }
+                target[i] = rand;
             }
             Debug.Assert(target.ToArray().Distinct().Count() == target.Length);
             target.Sort();
