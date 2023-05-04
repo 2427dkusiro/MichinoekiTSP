@@ -2,6 +2,7 @@
 
 namespace MichinoekiTSP.Data;
 
+
 public class MichinoekiResourceManager
 {
     protected MichinoekiResourceManager() { }

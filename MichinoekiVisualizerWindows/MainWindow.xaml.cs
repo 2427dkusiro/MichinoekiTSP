@@ -2,13 +2,13 @@
 
 using Microsoft.Web.WebView2.Wpf;
 
-using System.Diagnostics;
 using System.Reflection;
+using System.Text.Json;
 using System.Windows;
 
 using Path = System.IO.Path;
 
-namespace MichinoekiVisualizerWindows;
+namespace MichinoekiTSP.VisualizerWindows;
 /// <summary>
 /// Interaction logic for MainWindow.xaml
 /// </summary>
@@ -17,84 +17,93 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+
+        var webView = new WebView2();
+        _ = MainGrid.Children.Add(webView);
+        mapView = new(webView);
+        MainWindowViewModel viewModel = new(mapView);
+        DataContext = viewModel;
     }
 
-    private WebView2 webView;
+    private readonly MapView mapView;
 
     private async void Window_Loaded(object sender, RoutedEventArgs e)
     {
-        var execDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
-        var html = Path.Combine(execDir, "Index.html");
+        await mapView.Initialize(43.06878725573487, 141.35072226585388, 10);
+    }
+}
 
-        webView = new WebView2()
-        {
-            Source = new Uri($"file:///{html}")
-        };
-        _ = MainGrid.Children.Add(webView);
+public class MapView
+{
+    private readonly WebView2 webView;
 
-        webView.ContentLoading += async (sender, e) =>
-        {
-            await InitializeMap();
-            await RenderAnswer();
-        };
+    public MapView(WebView2 webView)
+    {
+        this.webView = webView;
     }
 
-    private async Task SetView(double lat, double lng)
+    public async Task Initialize(double lat, double lng, int zoom)
+    {
+        var execDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+        var html = Path.Combine(execDir!, "Index.html");
+        webView.Source = new Uri($"file:///{html}");
+
+        while (webView.CoreWebView2 is null)
+        {
+            await Task.Delay(10);
+        }
+
+        TaskCompletionSource completionSource = new();
+        webView.CoreWebView2.DOMContentLoaded += async (sender, e) =>
+        {
+            await webView.CoreWebView2.ExecuteScriptAsync("""ensureInitialized()""");
+            await SetView(lat, lng);
+            await SetZoom(zoom);
+            completionSource.TrySetResult();
+        };
+
+        await completionSource.Task;
+    }
+
+    public async Task SetView(double lat, double lng)
     {
         _ = await webView.CoreWebView2.ExecuteScriptAsync($"""setView({lat},{lng})""");
     }
 
-    private async Task SetZoom(int level)
+    public async Task SetZoom(int level)
     {
         _ = await webView.CoreWebView2.ExecuteScriptAsync($"""setZoom({level})""");
     }
 
-    private async Task AddMarker(double lat, double lng, string name)
+    public async Task AddMarker(double lat, double lng, string name)
     {
         _ = await webView.CoreWebView2.ExecuteScriptAsync($"""addMarker({lat},{lng},"{name}")""");
     }
 
-    private async Task AddPolyline(IEnumerable<GeometryPoint> points, string color)
+    private readonly LinkedList<Polyline> polylines = new();
+
+    public async Task AddPolyline(IEnumerable<GeometryPoint> points, string color)
     {
         var arrayString = $"""[{string.Join(',', points.Select(x => $"[{x.Latitude},{x.Longitude}]"))}]""";
         var result = await webView.CoreWebView2.ExecuteScriptAsync($"""addPolyline({arrayString},"{color}")""");
+        var id = JsonSerializer.Deserialize<int>(result);
+        polylines.AddLast(new Polyline(id, points));
     }
 
-    private async Task InitializeMap()
+    public async Task RemovePolyline(Polyline polyline)
     {
-        // TODO:もうちょっとちゃんと待つ
-        await Task.Delay(100);
-        await SetView(43.06878725573487, 141.35072226585388);
-        await Task.Delay(100);
-        await SetZoom(10);
+        var id = polyline.Id;
+        await webView.CoreWebView2.ExecuteScriptAsync($"""removePolyline({id})""");
+        polylines.Remove(polyline);
     }
 
-    // ひとまずデバッグ用
-    private async Task RenderAnswer()
+    public async Task ClearPolyline()
     {
-        MichinoekiResourceManager? manager = null;
-        await Task.Run(() =>
+        foreach (var polyline in polylines.ToArray())
         {
-            manager = MichinoekiResourceManager.CreateInstance();
-        });
-
-        foreach (GeometryPoint point in manager.Michinoekis)
-        {
-            await AddMarker(point.Latitude, point.Longitude, point.Name);
-        }
-
-        await Task.Delay(100);
-
-        var start = manager.Michinoekis.First(x => x.Name == "三笠");
-        var solver = new TSPSolver(manager, start);
-        var answer = solver.TwoOptILS();
-
-        Debug.WriteLine($"時間:{answer.TotalTime}");
-        Debug.WriteLine($"距離:{answer.TotalDistance / 1000m}km");
-
-        foreach (Route route in answer.Routes)
-        {
-            await AddPolyline(route.PolylineDecoded, "#0000bb");
+            await RemovePolyline(polyline);
         }
     }
 }
+
+public record struct Polyline(int Id, IEnumerable<GeometryPoint> Point);

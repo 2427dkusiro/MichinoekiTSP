@@ -1,6 +1,4 @@
-﻿using MichinoekiTSP.Data;
-
-using System.Diagnostics;
+﻿using System.Diagnostics;
 
 namespace MichinoekiTSP.Data;
 
@@ -74,50 +72,15 @@ public class TSPSolver
         var routes = answer.Routes.ToArray();
         var swapTable = new Route[routes.Length];
 
-        bool TrySwap(int i, int j)
-        {
-            Debug.Assert(i != j);
-
-            var a = routes[i];
-            var b = routes[j];
-
-            var diff = j - i;
-            swapTable[0] = routeDictionary[a.From][b.From];
-            for (int k = 1; k < diff; k++)
-            {
-                swapTable[k] = routeDictionary[routes[j - k].To][routes[j - k].From];
-            }
-            swapTable[diff] = routeDictionary[a.To][b.To];
-
-            var oldCost = TimeSpan.Zero;
-            var newCost = TimeSpan.Zero;
-            for (int k = 0; k <= diff; k++)
-            {
-                oldCost += routes[i + k].Duration;
-                newCost += swapTable[k].Duration;
-            }
-
-            if (oldCost <= newCost)
-            {
-                return false;
-            }
-
-            // commit
-            for (int k = 0; k <= diff; k++)
-            {
-                routes[i + k] = swapTable[k];
-            }
-            return true;
-        }
-
         int step = 0;
+
+#if DEBUG
         void Log()
         {
             Debug.WriteLine($"===step {step}===");
             Debug.WriteLine($"時間:{answer.TotalTime}");
             Debug.WriteLine($"距離:{answer.TotalDistance / 1000m}km");
         }
-#if DEBUG
         answer = new TSPAnswer(routes);
 #endif
 
@@ -128,7 +91,7 @@ public class TSPSolver
             {
                 for (int j = i + 1; j < routes.Length - 1; j++)
                 {
-                    hasSwap |= TrySwap(i, j);
+                    hasSwap |= TrySwap(i, j, routes, swapTable);
                 }
             }
             if (!hasSwap)
@@ -145,69 +108,15 @@ public class TSPSolver
         return new TSPAnswer(routes);
     }
 
-    public TSPAnswer TwoOptILS(TSPAnswer? answer = null, int maxIteration = 100)
+
+    public TSPAnswer TwoOptILS(TSPAnswer? answer = null, Random? random = null, int maxIteration = 100)
     {
         answer ??= TwoOptLS();
         Route[] routes = answer.Routes.ToArray();
-        Random random = new();
-
-        void Kick()
-        {
-            var offset = new int[routes.Length];
-            Span<int> target = stackalloc int[4];
-            for (int i = 0; i < 4; i++)
-            {
-                bool used = false;
-                var rand = random.Next(routes.Length - i);
-                for (int j = 0; j < i; j++)
-                {
-                    if (target[j] == rand)
-                    {
-                        used = true;
-                    }
-                }
-                if (used)
-                {
-                    i--;
-                    continue;
-                }
-                target[i] = rand;
-            }
-            Debug.Assert(target.ToArray().Distinct().Count() == target.Length);
-            target.Sort();
-
-            var arr = new Route[4];
-            arr[0] = routeDictionary[routes[target[0]].From][routes[target[2]].To];
-            arr[1] = routeDictionary[routes[target[1]].From][routes[target[3]].To];
-            arr[2] = routeDictionary[routes[target[2]].From][routes[target[0]].To];
-            arr[3] = routeDictionary[routes[target[3]].From][routes[target[1]].To];
-
-            int current = 0;
-            var newArray = new Route[routes.Length];
-            for (int i = 0; i < newArray.Length; i++)
-            {
-                if (target.Contains(current))
-                {
-                    var obj = arr[target.IndexOf(current)];
-                    newArray[i] = obj;
-                    current = routes.Select((x, i) => (x, i)).First(x => x.x.To == obj.To).i + 1;
-                }
-                else
-                {
-                    if ((uint)current >= routes.Length)
-                    {
-
-                    }
-                    newArray[i] = routes[current++];
-                }
-            }
-            routes = newArray;
-            Debug.Assert(routes.Select(x => x.From).Distinct().Count() == routes.Count());
-        }
 
         for (int i = 0; i < maxIteration; i++)
         {
-            Kick();
+            routes = Kick(routes, random);
             var nextAns = TwoOptLS(new TSPAnswer(routes));
             if (answer.TotalTime > nextAns.TotalTime)
             {
@@ -215,6 +124,139 @@ public class TSPSolver
             }
         }
         return answer;
+    }
+
+    public TSPAnswer TwoOptSA(TSPAnswer? answer = null, Random? random = null, double? startTemp = null, double? endTemp = null, int maxIteration = 1_000_000)
+    {
+        answer ??= TwoOptLS();
+        Route[] routes = answer.Routes.ToArray();
+        Route[] swapTable = new Route[routes.Length];
+
+        random ??= new();
+        double st = startTemp ??= 5000;
+        double et = endTemp ??= 10;
+        // const double temp_factor = 0.999;
+        Span<int> buf = stackalloc int[2];
+
+        for (int i = 0; i < maxIteration; i++)
+        {
+            var rand = TSPUtil.Randoms(buf, routes.Length, random);
+            var (oldCost, newCost) = CalcSwap(buf[0], buf[1], routes, swapTable);
+
+            double temp = st + (et - st) * i / maxIteration; // Math.Pow(temp_factor, i);
+            double prod = Math.Exp((oldCost - newCost).TotalSeconds / temp);
+            var r = random.NextDouble();
+            if (prod > r)
+            {
+                CommitSwap(buf[0], buf[1], routes, swapTable);
+            }
+        }
+
+        return new TSPAnswer(routes);
+    }
+
+    // lib
+
+    private bool TrySwap(int i, int j, Route[] routes, Route[] swapTable)
+    {
+        var (oldCost, newCost) = CalcSwap(i, j, routes, swapTable);
+
+        if (oldCost > newCost)
+        {
+            CommitSwap(i, j, routes, swapTable);
+            return true;
+        }
+        return false;
+    }
+
+    private (TimeSpan oldCost, TimeSpan newCost) CalcSwap(int i, int j, Route[] routes, Route[] swapTable)
+    {
+        Debug.Assert(i != j);
+        Debug.Assert(routes.Length == swapTable.Length);
+        if (i > j)
+        {
+            return CalcSwap(j, i, routes, swapTable);
+        }
+        Debug.Assert(j < routes.Length);
+
+        var a = routes[i];
+        var b = routes[j];
+
+        swapTable[i] = routeDictionary[a.From][b.From];
+        var oldCost = routes[i].Duration;
+        var newCost = swapTable[i].Duration;
+        for (int k = i + 1; k < j; k++)
+        {
+            swapTable[k] = routeDictionary[routes[j - k + i].To][routes[j - k + i].From];
+            oldCost += routes[k].Duration;
+            newCost += swapTable[k].Duration;
+        }
+        swapTable[j] = routeDictionary[a.To][b.To];
+        oldCost += routes[j].Duration;
+        newCost += swapTable[j].Duration;
+
+        return (oldCost, newCost);
+    }
+
+    private void CommitSwap(int i, int j, Route[] routes, Route[] swapTable)
+    {
+        if (i > j)
+        {
+            CommitSwap(j, i, routes, swapTable);
+            return;
+        }
+        Array.Copy(swapTable, i, routes, i, j - i + 1);
+    }
+
+    private Route[] Kick(Route[] routes, Random? random)
+    {
+        Span<int> target = stackalloc int[4];
+        TSPUtil.Randoms(target, routes.Length, random);
+        target.Sort();
+
+        var arr = new Route[4];
+        arr[0] = routeDictionary[routes[target[0]].From][routes[target[2]].To];
+        arr[1] = routeDictionary[routes[target[1]].From][routes[target[3]].To];
+        arr[2] = routeDictionary[routes[target[2]].From][routes[target[0]].To];
+        arr[3] = routeDictionary[routes[target[3]].From][routes[target[1]].To];
+
+        int current = 0;
+        var newArray = new Route[routes.Length];
+        for (int i = 0; i < newArray.Length; i++)
+        {
+            if (target.Contains(current))
+            {
+                var obj = arr[target.IndexOf(current)];
+                newArray[i] = obj;
+                current = routes.Select((x, i) => (x, i)).First(x => x.x.To == obj.To).i + 1;
+            }
+            else
+            {
+                Debug.Assert((uint)current < routes.Length);
+                newArray[i] = routes[current++];
+            }
+        }
+
+        Debug.Assert(newArray.Select(x => x.From).Distinct().Count() == routes.Length);
+        return newArray;
+    }
+}
+
+public static class TSPUtil
+{
+    public static Span<int> Randoms(Span<int> buffer, int maxValue, Random? random = null)
+    {
+        random ??= new();
+        for (int i = 0; i < buffer.Length; i++)
+        {
+            int rand;
+            do
+            {
+                rand = random.Next(maxValue);
+            } while (buffer.Contains(rand));
+            buffer[i] = rand;
+        }
+        return buffer;
     }
 }
 
