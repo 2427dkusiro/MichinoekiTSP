@@ -4,7 +4,8 @@ using System.Text.Json;
 using DateTime = System.DateTime;
 
 namespace MichinoekiTSP.Data;
-public record Route(GeometryPoint From, GeometryPoint To, string Title, int DistanceMeters, TimeSpan Duration, double AverageSpeed, string Polyline)
+
+public sealed record Route(GeometryPoint From, GeometryPoint To, string Title, int DistanceMeters, TimeSpan Duration, double AverageSpeed, string Polyline)
 {
     public GeometryPoint[] PolylineDecoded { get => PolylineEncoder.Decode(Polyline).ToArray(); }
 
