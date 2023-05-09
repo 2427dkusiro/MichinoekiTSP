@@ -33,7 +33,13 @@ public sealed class TSPSolverContext
 
     public Random Random { get; }
 
-    public bool DoValidateAnswer { get; }
+    public bool DoValidateAnswer { get; } =
+#if DEBUG
+        true
+#else
+        false
+#endif
+        ;
 
     public TSPAnswer SubmitAnswer(Route[] routes)
     {

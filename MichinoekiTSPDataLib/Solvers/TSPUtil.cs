@@ -37,25 +37,31 @@ public static class TSPUtil
         Debug.Assert(routes.Length == swapTable.Length);
         if (i > j)
         {
-            return CalcSwap(context, j, i, routes, swapTable);
+            (i, j) = (j, i);
         }
         Debug.Assert(j < routes.Length);
 
         var a = routes[i];
         var b = routes[j];
+        var newRouteA = context.FindRoute(a.From, b.From);
+        var newRouteB = context.FindRoute(a.To, b.To);
 
-        swapTable[i] = context.FindRoute(a.From, b.From);
-        var oldCost = routes[i].Duration;
-        var newCost = swapTable[i].Duration;
-        for (int k = i + 1; k < j; k++)
+        swapTable[i] = newRouteA;
+        var oldCost = a.Duration;
+        var newCost = newRouteA.Duration;
+
+        var routeSlice = routes[(i + 1)..j];
+        var swapTableSlice = swapTable.AsSpan()[(i + 1)..j];
+        for (int k = 0; k < routeSlice.Length; k++)
         {
-            swapTable[k] = context.FindRoute(routes[j - k + i].To, routes[j - k + i].From);
-            oldCost += routes[k].Duration;
-            newCost += swapTable[k].Duration;
+            var target = routeSlice[^(k + 1)];
+            swapTableSlice[k] = context.FindRoute(target.To, target.From);
+            oldCost += routeSlice[k].Duration;
+            newCost += swapTableSlice[k].Duration;
         }
-        swapTable[j] = context.FindRoute(a.To, b.To);
-        oldCost += routes[j].Duration;
-        newCost += swapTable[j].Duration;
+        swapTable[j] = newRouteB;
+        oldCost += b.Duration;
+        newCost += newRouteB.Duration;
 
         return (oldCost, newCost);
     }
@@ -69,7 +75,6 @@ public static class TSPUtil
         }
 
         swapTable.AsSpan()[i..(j + 1)].CopyTo(routes[i..]);
-        // Array.Copy(swapTable, i, routes, i, j - i + 1);
     }
 
     public static Route[] Kick(TSPSolverContext context, Route[] routes, Random? random)

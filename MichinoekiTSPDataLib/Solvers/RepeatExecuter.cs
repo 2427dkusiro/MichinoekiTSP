@@ -18,16 +18,39 @@ public sealed class RepeatExecuter : ITSPExecuter
     public TSPAnswer Solve()
     {
         TSPAnswer? ans = null;
-        for (int i = 0; i < parameter.Count; i++)
+        if (parameter.ParallelCount == 1)
         {
-            var nAns = executer.Solve();
-            if (ans is null || ans > nAns)
+            for (int i = 0; i < parameter.RepeatCount; i++)
             {
-                ans = nAns;
+                var nAns = executer.Solve();
+                if (ans is null || ans > nAns)
+                {
+                    ans = nAns;
+                }
             }
+        }
+        else
+        {
+            var option = new ParallelOptions();
+            object lockObj = new();
+            if (parameter.ParallelCount > 1)
+            {
+                option.MaxDegreeOfParallelism = parameter.ParallelCount;
+            }
+            Parallel.For(0, parameter.RepeatCount, option, arg =>
+            {
+                var nAns = executer.Solve();
+                lock (lockObj)
+                {
+                    if (ans is null || ans > nAns)
+                    {
+                        ans = nAns;
+                    }
+                }
+            });
         }
         return ans!;
     }
 }
 
-public record class RepeatExecuterParameter(int Count);
+public record class RepeatExecuterParameter(int RepeatCount, int ParallelCount = 0);
