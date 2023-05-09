@@ -1,13 +1,21 @@
 ﻿namespace MichinoekiTSP.Data.Solvers;
 
-public class TwoOptLS : ITSPOptimizer
+public sealed class TwoOptLS : ITSPOptimizer
 {
-    public static Type? RequiredParameterType => typeof(TwoOptLSParameter);
+    private readonly TSPSolverContext context;
 
-    public static TSPAnswer Optimize(TSPSolverContext context, TSPAnswer answer)
+    private readonly TwoOptLSParameter parameter;
+
+    public TwoOptLS(TSPSolverContext context, TwoOptLSParameter parameter)
     {
-        var p = context.GetParameter<TwoOptLSParameter>();
-        var routes = answer.Routes.ToArray();
+        this.context = context;
+        this.parameter = parameter;
+    }
+
+    public TSPAnswer Optimize(TSPAnswer answer)
+    {
+        var p = parameter;
+        Route[] routes = answer.Routes.ToArray();
         var swapTable = new Route[routes.Length];
 
         int step;
@@ -18,7 +26,7 @@ public class TwoOptLS : ITSPOptimizer
                 return;
             }
             // validate answer
-            answer = new TSPAnswer(routes);
+            answer = new TSPAnswer(routes.ToArray());
             context.WriteMessage($"[LS]===step {step}===");
             context.WriteMessage($"[LS]時間:{answer.TotalTime}");
             context.WriteMessage($"[LS]距離:{answer.TotalDistance / 1000m}km");

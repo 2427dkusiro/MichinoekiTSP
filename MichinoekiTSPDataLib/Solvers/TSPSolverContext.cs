@@ -66,22 +66,6 @@ public sealed class TSPSolverContext
         }
     }
 
-    private readonly Dictionary<Type, object> parameters = new();
-
-    public void SetParameter(object parameter)
-    {
-        if (parameters.ContainsKey(parameter.GetType()))
-        {
-            throw new InvalidOperationException();
-        }
-        parameters.Add(parameter.GetType(), parameter);
-    }
-
-    public T GetParameter<T>()
-    {
-        var type = typeof(T);
-        return (T)parameters[type];
-    }
 
     public void WriteMessage(string msg)
     {

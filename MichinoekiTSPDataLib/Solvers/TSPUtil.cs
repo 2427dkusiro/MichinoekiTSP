@@ -19,7 +19,7 @@ public static class TSPUtil
         return buffer;
     }
 
-    public static bool TrySwap(TSPSolverContext context, int i, int j, Route[] routes, Route[] swapTable)
+    public static bool TrySwap(TSPSolverContext context, int i, int j, Span<Route> routes, Route[] swapTable)
     {
         var (oldCost, newCost) = CalcSwap(context, i, j, routes, swapTable);
 
@@ -31,7 +31,7 @@ public static class TSPUtil
         return false;
     }
 
-    public static (TimeSpan oldCost, TimeSpan newCost) CalcSwap(TSPSolverContext context, int i, int j, Route[] routes, Route[] swapTable)
+    public static (TimeSpan oldCost, TimeSpan newCost) CalcSwap(TSPSolverContext context, int i, int j, ReadOnlySpan<Route> routes, Route[] swapTable)
     {
         Debug.Assert(i != j);
         Debug.Assert(routes.Length == swapTable.Length);
@@ -60,14 +60,16 @@ public static class TSPUtil
         return (oldCost, newCost);
     }
 
-    public static void CommitSwap(int i, int j, Route[] routes, Route[] swapTable)
+    public static void CommitSwap(int i, int j, Span<Route> routes, Route[] swapTable)
     {
         if (i > j)
         {
             CommitSwap(j, i, routes, swapTable);
             return;
         }
-        Array.Copy(swapTable, i, routes, i, j - i + 1);
+
+        swapTable.AsSpan()[i..(j + 1)].CopyTo(routes[i..]);
+        // Array.Copy(swapTable, i, routes, i, j - i + 1);
     }
 
     public static Route[] Kick(TSPSolverContext context, Route[] routes, Random? random)

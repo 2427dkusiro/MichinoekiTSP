@@ -2,7 +2,24 @@
 
 public interface ITSPExecuter
 {
-    public static abstract TSPAnswer Solve(TSPSolverContext context);
+    public TSPAnswer Solve();
+}
 
-    public static abstract Type? RequiredParameterType { get; }
+public sealed class SingleExecuter : ITSPExecuter
+{
+    private readonly ITSPInitialSolver initialSolver;
+
+    private readonly ITSPOptimizer optimizer;
+
+    public SingleExecuter(ITSPInitialSolver initialSolver, ITSPOptimizer optimizer)
+    {
+        this.initialSolver = initialSolver;
+        this.optimizer = optimizer;
+    }
+
+    public TSPAnswer Solve()
+    {
+        var ans = initialSolver.Solve();
+        return optimizer.Optimize(ans);
+    }
 }

@@ -1,22 +1,33 @@
 ﻿namespace MichinoekiTSP.Data.Solvers;
 
-public class TwoOptSA<T> : ITSPExecuter where T : ITSPInitialSolver
+public class TwoOptSA : ITSPExecuter
 {
-    public static Type? RequiredParameterType => typeof(TwoOptSAParameter);
+    private readonly TSPSolverContext context;
 
-    public static TSPAnswer Solve(TSPSolverContext context)
+    private readonly TwoOptSAParameter parameter;
+
+    private readonly ITSPInitialSolver initialSolver;
+
+    public TwoOptSA(TSPSolverContext context, TwoOptSAParameter parameter, ITSPInitialSolver initialSolver)
     {
-        var answer = T.Solve(context);
+        this.context = context;
+        this.parameter = parameter;
+        this.initialSolver = initialSolver;
+    }
+
+    public TSPAnswer Solve()
+    {
+        var answer = initialSolver.Solve();
         Route[] routes = answer.Routes.ToArray();
         Route[] swapTable = new Route[routes.Length];
 
         var random = context.Random;
-        double st = context.GetParameter<TwoOptSAParameter>().StartTemp;
-        double et = context.GetParameter<TwoOptSAParameter>().EndTemp;
+        double st = parameter.StartTemp;
+        double et = parameter.EndTemp;
         // const double temp_factor = 0.999;
         Span<int> buf = stackalloc int[2];
 
-        var maxIteration = context.GetParameter<TwoOptSAParameter>().MaxIteration;
+        var maxIteration = parameter.MaxIteration;
         for (int i = 0; i < maxIteration; i++)
         {
             var rand = TSPUtil.CreateRandoms(buf, routes.Length, random);

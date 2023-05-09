@@ -1,4 +1,5 @@
 ﻿using MichinoekiTSP.Data;
+using MichinoekiTSP.Data.Solvers;
 
 using System.Windows.Input;
 
@@ -57,19 +58,24 @@ public class MainWindowViewModel : ViewModelBase
             {
                 await mapView.ClearPolyline();
                 var start = _manager!.Michinoekis.First(x => x.Name == "三笠");
-                var solver = new TSPSolver(_manager, start);
+                var solver = new TSPSolverBuilder()
+                    .AddParameter(new TSPSolverContext(_manager!, start, new Random()))
+                    .UseInitialSolver<NearestNeighbor>()
+                    .UseExecuter<TwoOptSA>(new TwoOptSAParameter(1_000_000, 5000, 10))
+                    .UseExecuter<RepeatExecuter>(new RepeatExecuterParameter(100))
+                    .Build();
 
                 TSPAnswer? answer = null;
                 await Task.Run(() =>
                 {
-                    answer = solver.TwoOptSA();
+                    answer = solver();
                 });
 
                 TSPAnswer = answer!;
 
-                foreach (Route route in answer!.Routes)
+                for (int i = 0; i < answer!.Routes.Length; i++)
                 {
-                    await mapView.AddPolyline(route.PolylineDecoded, "#0000bb");
+                    await mapView.AddPolyline(answer!.Routes[i].PolylineDecoded, "#0000bb");
                 }
             },
             CanExecuteHandler = _ => _manager is not null

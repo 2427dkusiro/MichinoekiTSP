@@ -1,6 +1,6 @@
 ﻿namespace MichinoekiTSP.Data.Solvers;
 
-public sealed class TSPAnswer
+public sealed class TSPAnswer : IComparable<TSPAnswer>
 {
     private readonly Route[] routes;
 
@@ -9,7 +9,7 @@ public sealed class TSPAnswer
         this.routes = routes;
     }
 
-    public IReadOnlyList<Route> Routes { get => routes; }
+    public ReadOnlySpan<Route> Routes { get => routes; }
 
     public long TotalDistance
     {
@@ -35,5 +35,30 @@ public sealed class TSPAnswer
             }
             return total;
         }
+    }
+
+    public int CompareTo(TSPAnswer? other)
+    {
+        return TotalTime.CompareTo(other?.TotalTime);
+    }
+
+    public static bool operator <(TSPAnswer left, TSPAnswer right)
+    {
+        return left.CompareTo(right) < 0;
+    }
+
+    public static bool operator >(TSPAnswer left, TSPAnswer right)
+    {
+        return left.CompareTo(right) > 0;
+    }
+
+    public static bool operator <=(TSPAnswer left, TSPAnswer right)
+    {
+        return left.CompareTo(right) <= 0;
+    }
+
+    public static bool operator >=(TSPAnswer left, TSPAnswer right)
+    {
+        return left.CompareTo(right) >= 0;
     }
 }

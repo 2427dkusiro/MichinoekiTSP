@@ -1,77 +1,81 @@
 ﻿using MichinoekiTSP.Data.Solvers;
 
-namespace MichinoekiTSPDataLib.Solvers;
+namespace MichinoekiTSP.Data.Solvers;
 
 public class TSPSolverBuilder
 {
     public TSPSolverBuilder() { }
 
-    public Type? InitialSolver { get; set; }
+    public ITSPInitialSolver? InitialSolver { get; private set; }
 
-    public object? InitialSolverParam { get; set; }
+    public ITSPOptimizer? Optimizer { get; private set; }
 
-    public Type? Optimizer { get; set; }
+    public ITSPExecuter? Executer { get; private set; }
 
-    public object? OptimizerParam { get; set; }
+    public List<object> Dependencies { get; } = new();
 
-    public Type? Executer { get; set; }
-
-    public object? ExecuterParam { get; set; }
-
-    public TSPSolverBuilder UseInitialSolver<T>(object? parameter = null) where T : ITSPInitialSolver
+    public TSPSolverBuilder AddParameter(object obj)
     {
-        if (InitialSolver is not null)
-        {
-            throw new InvalidOperationException();
-        }
-        InitialSolver = typeof(T);
-        if (T.RequiredParameterType != parameter?.GetType())
-        {
-            throw new ArgumentException("parameter required", nameof(parameter));
-        }
-        InitialSolverParam = parameter;
+        Dependencies.Add(obj);
         return this;
     }
 
-    public TSPSolverBuilder UseOptimizer<T>(object? parameter = null) where T : ITSPOptimizer
+    private static T BuildInstance<T>(IEnumerable<object> list)
     {
-        if (Optimizer is not null)
+        var ctors = typeof(T).GetConstructors();
+        if (ctors.Length != 1)
         {
-            throw new InvalidOperationException();
+            throw new NotSupportedException();
         }
-        Optimizer = typeof(T);
-        if (T.RequiredParameterType != parameter?.GetType())
+        var args = ctors[0].GetParameters().Select(x =>
         {
-            throw new ArgumentException("parameter required", nameof(parameter));
-        }
-        OptimizerParam = parameter;
+            var type = x.ParameterType;
+            return list.FirstOrDefault(x => x.GetType().IsAssignableTo(type))
+                ?? throw new InvalidOperationException($"cannot construct type {typeof(T)}. param {type} does not registered.");
+        });
+        return (T)ctors[0].Invoke(args.ToArray());
+    }
+
+    private IEnumerable<object> BuildDeps(IEnumerable<object> param)
+    {
+        IEnumerable<object> exists = new object?[] { InitialSolver, Optimizer, Executer }.Where(x => x is not null)!;
+        var deps = Dependencies.Concat(param).Concat(exists);
+        return deps;
+    }
+
+    public TSPSolverBuilder UseInitialSolver<T>(params object[] objects) where T : ITSPInitialSolver
+    {
+        var deps = BuildDeps(objects);
+        InitialSolver = BuildInstance<T>(deps);
         return this;
     }
 
-    public TSPSolverBuilder UseExecuter<T>(object? parameter = null) where T : ITSPExecuter
+    public TSPSolverBuilder UseOptimizer<T>(params object[] objects) where T : ITSPOptimizer
+    {
+        var deps = BuildDeps(objects);
+        Optimizer = BuildInstance<T>(deps);
+        return this;
+    }
+
+    public TSPSolverBuilder UseExecuter<T>(params object[] objects) where T : ITSPExecuter
+    {
+        var deps = BuildDeps(objects);
+        Executer = BuildInstance<T>(deps);
+        return this;
+    }
+
+    public Func<TSPAnswer> Build()
     {
         if (Executer is not null)
         {
-            throw new InvalidOperationException();
+            return Executer.Solve;
         }
-        Executer = typeof(T);
-        if (T.RequiredParameterType != parameter?.GetType())
-        {
-            throw new ArgumentException("parameter required", nameof(parameter));
-        }
-        ExecuterParam = parameter;
-        return this;
-    }
-
-    public void Build()
-    {
         if (InitialSolver is null)
         {
-            throw new InvalidOperationException("");
+            throw new InvalidOperationException();
         }
-        if (Optimizer is null)
-        {
-            if()
-        }
+        Optimizer ??= new TSPNullOptimizer();
+        Executer = new SingleExecuter(InitialSolver, Optimizer);
+        return Executer.Solve;
     }
 }

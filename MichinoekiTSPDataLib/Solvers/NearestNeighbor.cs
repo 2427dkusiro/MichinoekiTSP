@@ -2,9 +2,14 @@
 
 public class NearestNeighbor : ITSPInitialSolver
 {
-    public static Type? RequiredParameterType => null;
+    private readonly TSPSolverContext context;
 
-    public static TSPAnswer Solve(TSPSolverContext context)
+    public NearestNeighbor(TSPSolverContext context)
+    {
+        this.context = context;
+    }
+
+    public TSPAnswer Solve()
     {
         Dictionary<GeometryPoint, bool> stationDict = context.Michinoekis.ToDictionary(x => x, _ => false);
         int count = stationDict.Count;

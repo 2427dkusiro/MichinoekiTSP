@@ -2,16 +2,12 @@
 
 public interface ITSPOptimizer
 {
-    public static abstract TSPAnswer Optimize(TSPSolverContext context, TSPAnswer answer);
-
-    public static abstract Type? RequiredParameterType { get; }
+    public TSPAnswer Optimize(TSPAnswer answer);
 }
 
-public class TSPNullOptimizer : ITSPOptimizer
+public sealed class TSPNullOptimizer : ITSPOptimizer
 {
-    public static Type? RequiredParameterType => null;
-
-    public static TSPAnswer Optimize(TSPSolverContext context, TSPAnswer answer)
+    public TSPAnswer Optimize(TSPAnswer answer)
     {
         return answer;
     }
