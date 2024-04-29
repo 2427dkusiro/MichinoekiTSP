@@ -5,8 +5,22 @@ using DateTime = System.DateTime;
 
 namespace MichinoekiTSP.Data;
 
-public sealed record Route(GeometryPoint From, GeometryPoint To, string Title, int DistanceMeters, TimeSpan Duration, double AverageSpeed, string Polyline)
+public sealed class Route(GeometryPoint from, GeometryPoint to, string title, int distanceMeters, TimeSpan duration, double averageSpeed, string polyline)
 {
+    public GeometryPoint From { get; } = from;
+
+    public GeometryPoint To { get; } = to;
+
+    public string Title { get; } = title;
+
+    public int DistanceMeters { get; } = distanceMeters;
+
+    public TimeSpan Duration { get; } = duration;
+
+    public double AverageSpeed { get; } = averageSpeed;
+
+    public string Polyline { get; } = polyline;
+
     public GeometryPoint[] PolylineDecoded { get => PolylineEncoder.Decode(Polyline).ToArray(); }
 
     public string ToJson()
@@ -53,5 +67,21 @@ public sealed record Route(GeometryPoint From, GeometryPoint To, string Title, i
     {
         JsonRoute jsonObj = JsonSerializer.Deserialize<JsonRoute>(stream) ?? throw new FormatException();
         return FromJsonObject(jsonObj, michinoekis);
+    }
+
+    private int? _hashCode = null;
+
+    public override int GetHashCode()
+    {
+        return _hashCode ??= HashCode.Combine(From.Latitude, From.Longitude, To.Latitude, To.Longitude);
+    }
+
+    public override bool Equals(object? obj)
+    {
+        if (obj is not Route route)
+        {
+            return base.Equals(obj);
+        }
+        return From == route.From && To == route.To;
     }
 }
