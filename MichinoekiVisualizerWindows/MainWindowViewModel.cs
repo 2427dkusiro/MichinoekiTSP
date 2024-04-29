@@ -61,8 +61,11 @@ public class MainWindowViewModel : ViewModelBase
                 var solver = new TSPSolverBuilder()
                     .AddParameter(new TSPSolverContext(_manager!, start, new Random()))
                     .UseInitialSolver<NearestNeighbor>()
-                    .UseExecuter<TwoOptSA>(new TwoOptSAParameter(1_000_000, 5000, 10))
-                    .UseExecuter<RepeatExecuter>(new RepeatExecuterParameter(100))
+                    //.UseOptimizer<TwoOptLS>(new TwoOptLSParameter(100))
+                    //.UseOptimizer<DoubleBridgeOptimizer>()
+                    //.UseExecuter<SimpleLoopExecuter>(new SimpleLoopParameter(10))
+                    .UseExecuter<TwoOptSA>(new TwoOptSAParameter(2_000_000, 8000, 10))
+                    .UseExecuter<RepeatExecuter>(new RepeatExecuterParameter(30))
                     .Build();
 
                 TSPAnswer? answer = null;
